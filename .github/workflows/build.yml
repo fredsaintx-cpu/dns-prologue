@@ -1,0 +1,20 @@
+name: Build DNS Prologue Dylib
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ldid
+        run: brew install ldid
+      - name: Build
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          xcrun clang -arch arm64 -arch arm64e -isysroot "$SDK" -miphoneos-version-min=14.0 -dynamiclib -o dns_prologue.dylib dns_prologue.c
+          file dns_prologue.dylib
+          ldid -S dns_prologue.dylib
+          ls -la dns_prologue.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dns_prologue.dylib
+          path: dns_prologue.dylib
