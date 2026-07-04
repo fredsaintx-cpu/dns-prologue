@@ -7,7 +7,10 @@
 #include <netdb.h>
 #include <sys/mman.h>
 #include <mach/mach.h>
-#include <pthread.h>
+<parameter name="new_string" string="true">#include <unistd.h>
+
+// iOS doesn't expose sys_icache_invalidate in public SDK
+extern int sys_icache_invalidate(void *start, size_t len);
 
 static int (*real_getaddrinfo)(const char *, const char *,
                                 const struct addrinfo *, struct addrinfo **);
@@ -31,9 +34,9 @@ static void init(void) {
     if (!gai) return;
     target_addr = gai;
 
-    // Make the TEXT page writable
-    uintptr_t page = (uintptr_t)gai & ~(PAGE_SIZE - 1);
-    vm_protect(mach_task_self(), page, PAGE_SIZE, 0,
+    // Make the TEXT page writable (iOS arm64 page = 16KB)
+    uintptr_t page = (uintptr_t)gai & ~(16383);
+    vm_protect(mach_task_self(), page, 16384, 0,
                VM_PROT_READ | VM_PROT_WRITE | VM_PROT_COPY);
 
     // Save first 4 instructions to the trampoline
@@ -59,6 +62,6 @@ static void init(void) {
     src[3] = 0xD503201F;  // NOP
 
     // Flush instruction cache
-    sys_icache_invalidate((void *)page, PAGE_SIZE);
+    sys_icache_invalidate((void *)page, 16384);
     sys_icache_invalidate(trampoline, sizeof(trampoline));
 }
